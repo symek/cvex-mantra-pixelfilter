@@ -35,6 +35,7 @@ VRAY_CvexFilter::VRAY_CvexFilter()
 
 VRAY_CvexFilter::~VRAY_CvexFilter()
 {
+    delete cvex;
 }
 
 VRAY_PixelFilter *
@@ -51,11 +52,18 @@ VRAY_CvexFilter::setArgs(int argc, const char *const argv[])
 {
     UT_Args args;
     args.initialize(argc, argv);
-    args.stripOptions("c:o:s:w:z:");
+    args.stripOptions("s:w:");
 
     // Filter width specified by the user:
     if (args.found('w'))
         myFilterWidth = args.fargp('w');
+    if (args.found('s'))
+    {
+        myVexCode = args.argp2('s');
+        std::cout << args.argp2('s') << std::endl;
+    }
+    else
+        myVexCode = "/home/symek/work/vexpixfilter/test.vex";
 }
 
 void
@@ -83,6 +91,8 @@ VRAY_CvexFilter::prepFilter(int samplesperpixelx, int samplesperpixely)
 {
     mySamplesPerPixelX = samplesperpixelx;
     mySamplesPerPixelY = samplesperpixely;
+    // myVexCode = "/home/symek/work/vexpixfilter/test.vex";
+    cvex = new CVEX_Context();
     // std::cout << "samples per pixel x,y: " << mySamplesPerPixelX << ", " << mySamplesPerPixelY << std::endl;
 
 }
@@ -100,8 +110,37 @@ VRAY_CvexFilter::filter(
     int destyoffsetinsource,
     const VRAY_Imager &imager) const
 {
+
+    // Pointer to source data:
     const float *const cd = getSampleData(source, channel);
 
+    // Values to be send and recevied:
+    CVEX_Value  *source_val, *destination_val;
+ 
+    // cvex->addInput("source",      CVEX_TYPE_FLOAT, true);        // Varying value
+    // cvex->addInput("destination", CVEX_TYPE_FLOAT, true);
+
+    // Uniforms:
+    cvex->addInput("vectorsize",  CVEX_TYPE_INTEGER, &vectorsize, 1); // Uniform value
+    cvex->addInput("channel",     CVEX_TYPE_INTEGER, &channel, 1);
+    cvex->addInput("sourcewidth", CVEX_TYPE_INTEGER, &sourcewidth, 1);
+    cvex->addInput("sourceheight",CVEX_TYPE_INTEGER, &sourceheight, 1);
+    cvex->addInput("destwidth",   CVEX_TYPE_INTEGER, &destwidth, 1);
+    cvex->addInput("destheight",  CVEX_TYPE_INTEGER, &destheight, 1);
+    cvex->addInput("destxoffsetinsource",  CVEX_TYPE_INTEGER, &destxoffsetinsource, 1);
+    cvex->addInput("destyoffsetinsource",  CVEX_TYPE_INTEGER, &destyoffsetinsource, 1);
+
+    // const char *const myVexCode = "/home/symek/work/vexpixfilter/test.vex";
+    std::cout << myVexCode << std::endl;
+
+    if (!cvex->load(1, &myVexCode))
+    {
+        std::cout << "Can't load vex code " << myVexCode << std::endl;
+        cvex->clear();
+    }
+
+    cvex->run(10, false);
+    cvex->clear();
     // static int bucket = 0;
     // std::cout << "This is bucket: " << bucket++ << std::endl;
     // std::cout << "Source width: " << sourcewidth << std::endl;
@@ -124,7 +163,6 @@ VRAY_CvexFilter::filter(
     const float b = 0.2612038749637414 / s;
     const float c = 1.0 / s;
 
-    std::cout << "width: " << myFilterWidth << std::endl;
 
     for (int desty = 0; desty < destheight; ++desty)
     {

@@ -8,9 +8,12 @@
 #define __VRAY_CvexFilter__
 
 #include <VRAY/VRAY_PixelFilter.h>
+#include <UT/UT_ScopedPtr.h>
+
 
 class VRAY_Imager;
 class VRAY_SampleBuffer;
+class CVEX_Context;
 
 namespace SKK_CvexFilter {
 
@@ -57,6 +60,8 @@ private:
     /// These must be saved in prepFilter.
     /// Each pixel has mySamplesPerPixelX*mySamplesPerPixelY samples.
     /// @{
+    CVEX_Context *cvex;
+    const char *myVexCode;
     int mySamplesPerPixelX;
     int mySamplesPerPixelY;
     int myFilterWidth;
