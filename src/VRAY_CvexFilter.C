@@ -11,6 +11,9 @@
 #include <SYS/SYS_Floor.h>
 #include <SYS/SYS_Math.h>
 
+#include <CVEX/CVEX_Context.h>
+#include <UT/UT_Vector3.h>
+
 #include <iostream>
 
 using namespace SKK_CvexFilter;
@@ -26,6 +29,7 @@ allocPixelFilter(const char *name)
 VRAY_CvexFilter::VRAY_CvexFilter()
     : mySamplesPerPixelX(1) 
     , mySamplesPerPixelY(1)
+    , myFilterWidth(2)
 {
 }
 
@@ -48,6 +52,10 @@ VRAY_CvexFilter::setArgs(int argc, const char *const argv[])
     UT_Args args;
     args.initialize(argc, argv);
     args.stripOptions("c:o:s:w:z:");
+
+    // Filter width specified by the user:
+    if (args.found('w'))
+        myFilterWidth = args.fargp('w');
 }
 
 void
@@ -55,9 +63,9 @@ VRAY_CvexFilter::getFilterWidth(float &x, float &y) const
 {
     // NOTE: You could add support for different x and y filter widths,
     //       which might be useful for non-square pixels.
-    float filterwidth = 2.0;
-    x = filterwidth;
-    y = filterwidth;
+    
+    x = myFilterWidth;
+    y = myFilterWidth;
 }
 
 void
@@ -116,6 +124,8 @@ VRAY_CvexFilter::filter(
     const float b = 0.2612038749637414 / s;
     const float c = 1.0 / s;
 
+    std::cout << "width: " << myFilterWidth << std::endl;
+
     for (int desty = 0; desty < destheight; ++desty)
     {
         for (int destx = 0; destx < destwidth; ++destx)
@@ -135,9 +145,6 @@ VRAY_CvexFilter::filter(
 
             for (int i = 0; i < vectorsize; ++i, ++destination)
             {
-                // float f = cd[s1+i] + cd[s2+i] + cd[s3+i] + cd[s4+i] + cd[sx+i] + \
-                //           cd[s5+i] + cd[s6+i] + cd[s7+i] + cd[s8+i];
-                //       f /= 9.0;
                 float f = cd[s1+i]*b + cd[s2+i]*a + cd[s3+i]*b + cd[s4+i]*a  + cd[sx+i]*c +\
                           cd[s5+i]*a + cd[s6+i]*b + cd[s7+i]*a + cd[s8+i]*b;
                  *destination  =  f;  

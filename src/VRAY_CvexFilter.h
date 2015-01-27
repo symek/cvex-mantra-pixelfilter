@@ -59,8 +59,8 @@ private:
     /// @{
     int mySamplesPerPixelX;
     int mySamplesPerPixelY;
-    /// int myFilterWidth;
-    //int myBucketsNumber;
+    int myFilterWidth;
+    
     /// @}
 
 };
