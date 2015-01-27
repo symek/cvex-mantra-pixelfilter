@@ -62,6 +62,8 @@ private:
     /// @{
     CVEX_Context *cvex;
     const char *myVexCode;
+    const char * const *myArgv;
+    int myArgc;
     int mySamplesPerPixelX;
     int mySamplesPerPixelY;
     int myFilterWidth;

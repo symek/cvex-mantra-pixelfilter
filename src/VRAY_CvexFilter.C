@@ -54,16 +54,29 @@ VRAY_CvexFilter::setArgs(int argc, const char *const argv[])
     args.initialize(argc, argv);
     args.stripOptions("s:w:");
 
-    // Filter width specified by the user:
-    if (args.found('w'))
-        myFilterWidth = args.fargp('w');
-    if (args.found('s'))
-    {
-        myVexCode = args.argp2('s');
-        std::cout << args.argp2('s') << std::endl;
-    }
-    else
-        myVexCode = "/home/symek/work/vexpixfilter/test.vex";
+    // // Filter width specified by the user:
+    // if (args.found('w'))
+    //     myFilterWidth = args.fargp('w');
+
+    // if (args.found('s'))
+    // {
+    //     myVexCode = args.argp2('s');
+    //     std::cout << args.argp2('s') << std::endl;
+    // }
+    // else
+    //     myVexCode = "/home/symek/work/vexpixfilter/test.vex";
+
+    // myArgv = args.argv();
+    // myArgc = args.argc();
+    // myArgv = argv;
+    // myArgc = argc;
+
+    myArgv = argv;
+    myArgc = argc;
+    // std::cout << myArgv[1] << ", ";
+    // std::cout << myArgc -1 << std::endl;
+
+
 }
 
 void
@@ -112,13 +125,20 @@ VRAY_CvexFilter::filter(
 {
 
     // Pointer to source data:
-    const float *const cd = getSampleData(source, channel);
+    const float *const source_data = getSampleData(source, channel);
+    const int source_size = sourcewidth*sourceheight*vectorsize*mySamplesPerPixelX*mySamplesPerPixelY;
+    UT_Array<fpreal32> source_vector(source_size, source_size);
+    for (int i = 0; i < source_size; ++i)
+        source_vector[i] = source_data[i];
+    //source_vector.aliasArray((float*)source_data);
+    UT_Array<UT_Array<fpreal32> > source_array(1, 1);
+    source_array[0] = source_vector;
 
     // Values to be send and recevied:
     CVEX_Value  *source_val, *destination_val;
  
-    // cvex->addInput("source",      CVEX_TYPE_FLOAT, true);        // Varying value
-    // cvex->addInput("destination", CVEX_TYPE_FLOAT, true);
+    cvex->addInput("source",      CVEX_TYPE_FLOAT_ARRAY, true);        // Varying value
+    cvex->addInput("destination", CVEX_TYPE_FLOAT_ARRAY, true);
 
     // Uniforms:
     cvex->addInput("vectorsize",  CVEX_TYPE_INTEGER, &vectorsize, 1); // Uniform value
@@ -130,17 +150,28 @@ VRAY_CvexFilter::filter(
     cvex->addInput("destxoffsetinsource",  CVEX_TYPE_INTEGER, &destxoffsetinsource, 1);
     cvex->addInput("destyoffsetinsource",  CVEX_TYPE_INTEGER, &destyoffsetinsource, 1);
 
-    // const char *const myVexCode = "/home/symek/work/vexpixfilter/test.vex";
-    std::cout << myVexCode << std::endl;
+    //TODO: Can't parse argument atm:
+    const char *myVexCode = "/home/symek/work/vexpixfilter/test.vex";
 
     if (!cvex->load(1, &myVexCode))
     {
         std::cout << "Can't load vex code " << myVexCode << std::endl;
         cvex->clear();
+        return;
     }
 
-    cvex->run(10, false);
+    source_val = cvex->findInput("source", CVEX_TYPE_FLOAT_ARRAY);
+    if (source_val)
+        source_val->setTypedData(source_array);
+
+    // destination_val = cvex->findOutput("destination", CVEX_TYPE_FLOAT);
+    // if (destination_val)
+    //     destination_val->setTypedData(destination, destwidth*destheight);
+
+
+    cvex->run(1, false);
     cvex->clear();
+
     // static int bucket = 0;
     // std::cout << "This is bucket: " << bucket++ << std::endl;
     // std::cout << "Source width: " << sourcewidth << std::endl;
@@ -154,40 +185,40 @@ VRAY_CvexFilter::filter(
     // std::cout << "destxoffsetinsource: " << destxoffsetinsource << std::endl;
 
 
-    int lwidth  = mySamplesPerPixelY * sourcewidth * vectorsize;
-    int swidth  = mySamplesPerPixelX * vectorsize;
-    int reoffx  = destxoffsetinsource / mySamplesPerPixelX;
-    int reoffy  = destyoffsetinsource / mySamplesPerPixelY;
-    const float s = 4*0.3333333333333333 + 4*0.2612038749637414 + 1.0;
-    const float a = 0.3333333333333333 / s;
-    const float b = 0.2612038749637414 / s;
-    const float c = 1.0 / s;
+    // int lwidth  = mySamplesPerPixelY * sourcewidth * vectorsize;
+    // int swidth  = mySamplesPerPixelX * vectorsize;
+    // int reoffx  = destxoffsetinsource / mySamplesPerPixelX;
+    // int reoffy  = destyoffsetinsource / mySamplesPerPixelY;
+    // const float s = 4*0.3333333333333333 + 4*0.2612038749637414 + 1.0;
+    // const float a = 0.3333333333333333 / s;
+    // const float b = 0.2612038749637414 / s;
+    // const float c = 1.0 / s;
 
 
-    for (int desty = 0; desty < destheight; ++desty)
-    {
-        for (int destx = 0; destx < destwidth; ++destx)
-        {       
-                int dxf = destx + reoffx;
-                int dyf = desty + reoffy;
+    // for (int desty = 0; desty < destheight; ++desty)
+    // {
+    //     for (int destx = 0; destx < destwidth; ++destx)
+    //     {       
+    //             int dxf = destx + reoffx;
+    //             int dyf = desty + reoffy;
 
-                int s1 = (dyf-1) * lwidth + (dxf-1) * swidth;
-                int s2 = (dyf-1) * lwidth + dxf     * swidth;
-                int s3 = (dyf-1) * lwidth + (dxf+1) * swidth;
-                int s4 = dyf     * lwidth + (dxf-1) * swidth;
-                int sx = dyf     * lwidth + dxf     * swidth;
-                int s5 = dyf     * lwidth + (dxf+1) * swidth;
-                int s6 = (dyf+1) * lwidth + (dxf-1) * swidth;
-                int s7 = (dyf+1) * lwidth + dxf     * swidth;
-                int s8 = (dyf+1) * lwidth + (dxf+1) * swidth;
+    //             int s1 = (dyf-1) * lwidth + (dxf-1) * swidth;
+    //             int s2 = (dyf-1) * lwidth + dxf     * swidth;
+    //             int s3 = (dyf-1) * lwidth + (dxf+1) * swidth;
+    //             int s4 = dyf     * lwidth + (dxf-1) * swidth;
+    //             int sx = dyf     * lwidth + dxf     * swidth;
+    //             int s5 = dyf     * lwidth + (dxf+1) * swidth;
+    //             int s6 = (dyf+1) * lwidth + (dxf-1) * swidth;
+    //             int s7 = (dyf+1) * lwidth + dxf     * swidth;
+    //             int s8 = (dyf+1) * lwidth + (dxf+1) * swidth;
 
-            for (int i = 0; i < vectorsize; ++i, ++destination)
-            {
-                float f = cd[s1+i]*b + cd[s2+i]*a + cd[s3+i]*b + cd[s4+i]*a  + cd[sx+i]*c +\
-                          cd[s5+i]*a + cd[s6+i]*b + cd[s7+i]*a + cd[s8+i]*b;
-                 *destination  =  f;  
-            }    
+    //         for (int i = 0; i < vectorsize; ++i, ++destination)
+    //         {
+    //             float f = cd[s1+i]*b + cd[s2+i]*a + cd[s3+i]*b + cd[s4+i]*a  + cd[sx+i]*c +\
+    //                       cd[s5+i]*a + cd[s6+i]*b + cd[s7+i]*a + cd[s8+i]*b;
+    //              *destination  =  f;  
+    //         }    
              
-        }
-    }
+    //     }
+    // }
 }
